@@ -1,0 +1,59 @@
+{
+  "crawler": {
+    "investing_com": {
+      "base_url": "https://www.investing.com/news/latest-news",
+      "headless": true,
+      "delay_range": [1, 3],
+      "max_articles": 10,
+      "timeout": 30
+    }
+  },
+  "video_generation": {
+    "veo3": {
+      "api_key": "",
+      "endpoint": "https://generativelanguage.googleapis.com/v1/models/veo3:generateVideo",
+      "max_duration": 60,
+      "default_resolution": "1920x1080",
+      "default_fps": 30
+    },
+    "sora2": {
+      "api_key": "",
+      "endpoint": "https://api.openai.com/v1/video/generations",
+      "max_duration": 60,
+      "default_resolution": "1920x1080",
+      "default_fps": 30
+    },
+    "preferred_model": "veo3",
+    "output_directory": "data/videos"
+  },
+  "youtube": {
+    "credentials_path": "config/youtube_credentials.json",
+    "token_path": "config/youtube_token.pickle",
+    "default_privacy": "private",
+    "default_category": "25",
+    "made_for_kids": false
+  },
+  "characters": {
+    "default": "elon_musk",
+    "rotation_enabled": true,
+    "available": ["elon_musk", "jerome_powell", "jaehoon", "penguin"]
+  },
+  "scheduling": {
+    "enabled": false,
+    "interval_hours": 24,
+    "max_videos_per_day": 3
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "logs/shorts_rocket.log",
+    "max_size_mb": 100,
+    "backup_count": 5
+  },
+  "data_paths": {
+    "crawled": "data/crawled",
+    "videos": "data/videos", 
+    "thumbnails": "data/thumbnails",
+    "prompts": "data/prompts",
+    "metadata": "data/metadata"
+  }
+}

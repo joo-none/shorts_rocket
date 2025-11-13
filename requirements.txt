@@ -1,0 +1,48 @@
+# 웹 크롤링 관련
+selenium==4.15.2
+beautifulsoup4==4.12.2
+requests==2.31.0
+lxml==4.9.3
+
+# 비디오/이미지 처리
+opencv-python==4.8.1.78
+Pillow==10.0.1
+moviepy==1.0.3
+
+# YouTube API 관련
+google-auth==2.23.4
+google-auth-oauthlib==1.1.0
+google-auth-httplib2==0.1.1
+google-api-python-client==2.108.0
+
+# 데이터 처리
+pandas==2.1.3
+numpy==1.25.2
+
+# 스케줄링
+schedule==1.2.0
+
+# 환경변수 관리
+python-dotenv==1.0.0
+
+# 로깅
+colorlog==6.7.0
+
+# 타입 힌트
+typing-extensions==4.8.0
+
+# 시간 관련
+python-dateutil==2.8.2
+
+# JSON 처리
+jsonschema==4.19.2
+
+# 암호화
+cryptography==41.0.7
+
+# 네트워크 요청 관련
+urllib3==2.0.7
+certifi==2023.7.22
+
+# Chrome WebDriver 관리
+webdriver-manager==4.0.1
