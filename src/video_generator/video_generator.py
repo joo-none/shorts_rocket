@@ -26,7 +26,7 @@ class VideoGenerationRequest:
 
 
 @dataclass
-class GeneratedVideo:
+class GeneratedVideo:  # 건희 구현
     video_path: str
     thumbnail_path: Optional[str]
     metadata: Dict[str, Any]

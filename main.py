@@ -35,7 +35,7 @@ def generate_video_prompt(crawled_data: List[NewsArticle]) -> tuple:
     return total_scenario, individual_scenarios_list
 
 
-def generate_video(total_scenario, individual_scenarios_list) -> str:
+def generate_video(total_scenario, individual_scenarios_list) -> str:  # 건희 구현
     """각 시나리오별 영상 생성 (영상 이어 붙이기)"""
     # 시나리오별 영상 생성 및 결합 구현
     main_video = None
