@@ -1,3 +1,3 @@
-from .investing_crawler import InvestingCrawler, NewsArticle
+from .yahoo_finance_crawler import YahooFinanceCrawler, crawl_all as yahoo_crawl_all
 
-__all__ = ['InvestingCrawler', 'NewsArticle']
+__all__ = ['YahooFinanceCrawler', 'yahoo_crawl_all']

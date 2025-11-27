@@ -3,7 +3,7 @@
 Shorts Rocket - 금융 뉴스 자동화 쇼츠 생성기
 investing.com 크롤링 → 영상 생성 프롬프트 → 영상 생성 → 유튜브 업로드 자동화
 """
-
+from dataclasses import dataclass
 import os
 import sys
 import json
@@ -13,17 +13,58 @@ from typing import List
 # 프로젝트 루트를 Python 경로에 추가
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from src.crawler import InvestingCrawler, NewsArticle
+from src.crawler import YahooFinanceCrawler, yahoo_crawl_all
 from src.prompt_generator import VideoPromptGenerator, CharacterType
 from src.video_generator.video_generator import VeoGenerator
 from src.video_generator.editor import AutoEditor
 from src.uploader.youtube_upload_for_main import upload_video_to_youtube
 
 
-def crawl_data(limit: int = None) -> List[NewsArticle]:
-    """뉴스 크롤링"""
-    # 기사 크롤링 구현
-    pass
+@dataclass
+class NewsArticle:
+    """뉴스 기사 데이터 클래스"""
+    ticker: str
+    title: str
+    body: str
+    url: str
+    images: List[dict]
+    time_ago: str
+    
+def crawl_data(tickers: List[dict] = None, limit: int = 3) -> List[NewsArticle]:
+    """
+    Yahoo Finance 뉴스 크롤링
+    
+    Args:
+        tickers: [{"name": "TSLA", "count": 2}, {"name": "NVDA", "count": 3}]
+        limit: tickers가 없을 때 기본 티커당 기사 수
+    
+    Returns:
+        List[NewsArticle]
+    """
+    # 기본 티커 설정
+    if tickers is None:
+        tickers = [
+            {"name": "TSLA", "count": limit},
+            {"name": "NVDA", "count": limit},
+        ]
+    
+    # 크롤링 실행
+    raw_results = yahoo_crawl_all(tickers)
+    
+    # dict -> NewsArticle 변환
+    articles = [
+        NewsArticle(
+            ticker=r["ticker"],
+            title=r["title"],
+            body=r["body"],
+            url=r["url"],
+            images=r["images"],
+            time_ago=r["time_ago"]
+        )
+        for r in raw_results
+    ]
+    
+    return articles
 
 
 def generate_video_prompt(crawled_data: List[NewsArticle]) -> tuple:
