@@ -46,3 +46,7 @@ certifi==2023.7.22
 
 # Chrome WebDriver 관리
 webdriver-manager==4.0.1
+
+#크롤러 로직
+playwright==1.40.0
+playwright-stealth==1.0.6

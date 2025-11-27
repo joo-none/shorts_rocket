@@ -634,37 +634,3 @@ def crawl_all(company_list):
     return all_results
 
 
-if __name__ == "__main__":
-    print("""
-╔═══════════════════════════════════════════════════════╗
-║  Yahoo Finance 뉴스 크롤러                             ║
-║  - Playwright 기반                                     ║
-║  - 봇 감지 우회                                        ║
-║  - 팝업 자동 처리                                      ║
-║  - 최신순 정렬 (m/h/d 시간 파싱)                       ║
-╚═══════════════════════════════════════════════════════╝
-    """)
-    
-    # 티커 심볼 사용 (TSLA, NVDA 등)
-    company_list = [
-        {"name": "TSLA", "count": 2},
-        {"name": "NVDA", "count": 2}
-    ]
-    
-    results = crawl_all(company_list)
-    
-    print("\n" + "="*70)
-    print("🎉 최종 결과")
-    print("="*70)
-    
-    for r in results:
-        print(f"\n[{r['ticker']}] {r['title']}")
-        print(f"  ⏰ {r.get('time_ago', '시간 없음')}")
-        print(f"  📝 본문: {len(r['body']):,}자")
-        print(f"  🖼️  이미지: {len(r['images'])}개")
-        if r['images']:
-            for img in r['images']:
-                print(f"      └─ {os.path.basename(img['filepath'])}")
-        print(f"  🔗 {r['url']}")
-    
-    print(f"\n✅ 총 {len(results)}개 기사 수집 완료!")
