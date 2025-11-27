@@ -15,7 +15,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.crawler import InvestingCrawler, NewsArticle
 from src.prompt_generator import VideoPromptGenerator, CharacterType
-from src.video_generator import VideoGenerator
+from src.video_generator.video_generator import VeoGenerator
+from src.video_generator.editor import AutoEditor
 from src.uploader.youtube_upload_for_main import upload_video_to_youtube
 
 
@@ -35,12 +36,97 @@ def generate_video_prompt(crawled_data: List[NewsArticle]) -> tuple:
     return total_scenario, individual_scenarios_list
 
 
-def generate_video(total_scenario, individual_scenarios_list) -> str:  # 건희 구현
-    """각 시나리오별 영상 생성 (영상 이어 붙이기)"""
-    # 시나리오별 영상 생성 및 결합 구현
-    main_video = None
+def generate_video(total_scenario, individual_scenarios_list) -> str:   # 건희 구현
+    """
+    각 시나리오별 영상 생성 (영상 이어 붙이기)
+    :param total_scenario: 전체 프로젝트 이름 또는 주제 (폴더명으로 사용)
+    :param individual_scenarios_list: 시나리오 정보가 담긴 딕셔너리 리스트 
+           예: [{'prompt': 'A cat walking', 'scene_id': 1}, ...]
+    :return: 최종 생성된 영상의 파일 경로 (str)
+    """
+    
+    print(f"\n🚀 프로젝트 시작: {total_scenario}")
+    print(f"총 {len(individual_scenarios_list)}개의 씬을 생성하고 병합합니다.")
 
-    return main_video
+    # 1. 저장할 폴더명 설정 (공백 제거 등 안전하게 처리)
+    # 예: "My Movie" -> "My_Movie"
+    project_folder = total_scenario.replace(" ", "_")
+    final_output_path = os.path.join(project_folder, "final_movie.mp4")
+
+    # ---------------------------------------------------------
+    # 단계 1: Veo를 이용한 영상 일괄 생성 (Batch)
+    # ---------------------------------------------------------
+    try:
+        veo = VeoGenerator()
+        
+        # VeoGenerator의 generate_batch 형식에 맞게 데이터 변환
+        batch_tasks = []
+        for i, scene in enumerate(individual_scenarios_list):
+            # 시나리오 리스트에서 프롬프트 추출 (키 이름은 실제 데이터에 맞춰 수정 필요)
+            # 예: scene['description'] 혹은 scene['prompt']
+            prompt_text = scene.get('prompt') or scene.get('description', '')
+            
+            if not prompt_text:
+                print(f"⚠️ 경고: {i}번 씬의 프롬프트가 비어있어 건너뜁니다.")
+                continue
+
+            task = {
+                "prompt": prompt_text
+                # # 파일명 자동 지정: scene_001.mp4, scene_002.mp4 ...
+                # "output_path": f"scene_{i+1:03d}.mp4", 
+                # "aspect_ratio": "16:9" # 필요시 설정
+            }
+            batch_tasks.append(task)
+
+        # 실제 생성 요청 (폴더가 없으면 자동 생성됨)
+        if batch_tasks:
+            print("🎥 영상 생성 프로세스 진입...")
+            veo.generate_batch(task_list=batch_tasks, folder_name=project_folder)
+        else:
+            raise ValueError("생성할 시나리오가 없습니다.")
+
+    except Exception as e:
+        print(f"❌ 영상 생성 중 치명적 오류: {e}")
+        return None
+
+    # ---------------------------------------------------------
+    # 단계 2: AutoEditor를 이용한 영상 병합
+    # ---------------------------------------------------------
+    try:
+        print("🎞️ 영상 편집 및 병합 프로세스 진입...")
+        
+        editor = AutoEditor(output_resolution=(1920, 1080))
+        
+        # 생성된 폴더에서 영상 로드
+        editor.load_clips_from_folder(project_folder)
+        
+        # 이어 붙이기
+        editor.concatenate()
+        
+        # if 'bgm_path' in total_scenario: ...
+        
+        # 최종 내보내기
+        editor.export(final_output_path)
+        
+        print(f"🎉 모든 작업 완료! 결과물: {final_output_path}")
+        return final_output_path
+
+    except Exception as e:
+        print(f"❌ 영상 편집 중 오류: {e}")
+        return None
+
+# # --- 테스트 실행용 ---
+# if __name__ == "__main__":
+#     # 가상의 입력 데이터
+#     title = "Cyberpunk_Story"
+#     scenarios = [
+#         {"prompt": "A futuristic city skyline with neon lights, cinematic shot"},
+#         {"prompt": "A robot walking in the rain, close up"},
+#         {"prompt": "The robot looks at a glowing holographic sign"}
+#     ]
+    
+#     result_path = generate_video(title, scenarios)
+#     print(f"반환된 경로: {result_path}")
 
 
 def upload_to_youtube(main_video: str) -> bool:
