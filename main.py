@@ -171,6 +171,109 @@ def generate_video(total_scenario, individual_scenarios_list) -> str:  # 건희 
 #     print(f"반환된 경로: {result_path}")
 
 
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+
+# YouTube API 인증 범위
+YT_SCOPES = ["https://www.googleapis.com/auth/youtube.upload"] #강산 구현
+
+
+def youtube_authenticate():
+    """
+    YouTube API 인증 및 서비스 객체 반환
+    """
+    creds = None
+
+    # 기존 토큰 파일이 있는지 확인
+    if os.path.exists("token_youtube.json"):
+        creds = Credentials.from_authorized_user_file("token_youtube.json", YT_SCOPES)
+
+    # 토큰이 없거나 만료된 경우 새로 인증
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            print("  🔄 YouTube 토큰 갱신 중...")
+            creds.refresh(Request())
+        else:
+            print("  🔐 YouTube 인증 시작...")
+            flow = InstalledAppFlow.from_client_secrets_file("credentials_youtube.json", YT_SCOPES)
+            creds = flow.run_local_server(port=8080)
+
+        # 토큰 저장
+        with open("token_youtube.json", "w") as token:
+            token.write(creds.to_json())
+        print("  ✅ YouTube 토큰 저장 완료!")
+
+    return build("youtube", "v3", credentials=creds)
+
+
+def upload_video_to_youtube(video_path, title, description, tags=None, privacy="unlisted"):
+    """
+    YouTube에 영상 업로드
+
+    Returns:
+        dict: {'success': bool, 'video_id': str, 'url': str, ...}
+    """
+    try:
+        youtube = youtube_authenticate()
+
+        print(f"  업로드 중: {video_path}")
+
+        request = youtube.videos().insert(
+            part="snippet,status",
+            body={
+                "snippet": {
+                    "title": title,
+                    "description": description,
+                    "tags": tags if tags else [],
+                    "categoryId": "22"
+                },
+                "status": {
+                    "privacyStatus": privacy,
+                    "selfDeclaredMadeForKids": False
+                }
+            },
+            media_body=MediaFileUpload(video_path, chunksize=-1, resumable=True)
+        )
+
+        response = request.execute()
+
+        video_id = response.get("id")
+        video_url = f"https://youtu.be/{video_id}" if video_id else None
+
+        print(f"  YouTube 업로드 완료! URL: {video_url}")
+
+        return {"success": True, "video_id": video_id, "url": video_url, "response": response}
+
+    except Exception as e:
+        print(f"  YouTube 업로드 실패: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def upload_multiple_videos(video_list):
+    """
+    여러 영상을 YouTube에 일괄 업로드
+    video_list: [{'video_path':..., 'title':..., 'description':..., 'tags':..., 'privacy':...}, ...]
+    """
+    results = []
+    for i, video_info in enumerate(video_list, 1):
+        print(f"\n[{i}/{len(video_list)}] 영상 업로드 시작")
+        res = upload_video_to_youtube(
+            video_path=video_info.get("video_path"),
+            title=video_info.get("title", "Untitled Video"),
+            description=video_info.get("description", ""),
+            tags=video_info.get("tags", []),
+            privacy=video_info.get("privacy", "unlisted"),
+        )
+        results.append(res)
+
+    success_count = sum(1 for r in results if r.get("success"))
+    print(f"\n📊 업로드 완료: 성공 {success_count}/{len(video_list)}")
+    return results
+
+
 def upload_to_youtube(main_video: str) -> bool:
     """유튜브 업로드"""
     # 남은 작업
