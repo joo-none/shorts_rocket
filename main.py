@@ -77,15 +77,15 @@ def generate_video_prompt(crawled_data: List[NewsArticle]) -> tuple:
     return total_scenario, individual_scenarios_list
 
 
-def generate_video(total_scenario, individual_scenarios_list) -> str:   # 건희 구현
+def generate_video(total_scenario, individual_scenarios_list) -> str:  # 건희 구현
     """
     각 시나리오별 영상 생성 (영상 이어 붙이기)
     :param total_scenario: 전체 프로젝트 이름 또는 주제 (폴더명으로 사용)
-    :param individual_scenarios_list: 시나리오 정보가 담긴 딕셔너리 리스트 
+    :param individual_scenarios_list: 시나리오 정보가 담긴 딕셔너리 리스트
            예: [{'prompt': 'A cat walking', 'scene_id': 1}, ...]
     :return: 최종 생성된 영상의 파일 경로 (str)
     """
-    
+
     print(f"\n🚀 프로젝트 시작: {total_scenario}")
     print(f"총 {len(individual_scenarios_list)}개의 씬을 생성하고 병합합니다.")
 
@@ -99,14 +99,14 @@ def generate_video(total_scenario, individual_scenarios_list) -> str:   # 건희
     # ---------------------------------------------------------
     try:
         veo = VeoGenerator()
-        
+
         # VeoGenerator의 generate_batch 형식에 맞게 데이터 변환
         batch_tasks = []
         for i, scene in enumerate(individual_scenarios_list):
             # 시나리오 리스트에서 프롬프트 추출 (키 이름은 실제 데이터에 맞춰 수정 필요)
             # 예: scene['description'] 혹은 scene['prompt']
-            prompt_text = scene.get('prompt') or scene.get('description', '')
-            
+            prompt_text = scene.get("prompt") or scene.get("description", "")
+
             if not prompt_text:
                 print(f"⚠️ 경고: {i}번 씬의 프롬프트가 비어있어 건너뜁니다.")
                 continue
@@ -114,7 +114,7 @@ def generate_video(total_scenario, individual_scenarios_list) -> str:   # 건희
             task = {
                 "prompt": prompt_text
                 # # 파일명 자동 지정: scene_001.mp4, scene_002.mp4 ...
-                # "output_path": f"scene_{i+1:03d}.mp4", 
+                # "output_path": f"scene_{i+1:03d}.mp4",
                 # "aspect_ratio": "16:9" # 필요시 설정
             }
             batch_tasks.append(task)
@@ -135,26 +135,27 @@ def generate_video(total_scenario, individual_scenarios_list) -> str:   # 건희
     # ---------------------------------------------------------
     try:
         print("🎞️ 영상 편집 및 병합 프로세스 진입...")
-        
+
         editor = AutoEditor(output_resolution=(1920, 1080))
-        
+
         # 생성된 폴더에서 영상 로드
         editor.load_clips_from_folder(project_folder)
-        
+
         # 이어 붙이기
         editor.concatenate()
-        
+
         # if 'bgm_path' in total_scenario: ...
-        
+
         # 최종 내보내기
         editor.export(final_output_path)
-        
+
         print(f"🎉 모든 작업 완료! 결과물: {final_output_path}")
         return final_output_path
 
     except Exception as e:
         print(f"❌ 영상 편집 중 오류: {e}")
         return None
+
 
 # # --- 테스트 실행용 ---
 # if __name__ == "__main__":
@@ -165,7 +166,7 @@ def generate_video(total_scenario, individual_scenarios_list) -> str:   # 건희
 #         {"prompt": "A robot walking in the rain, close up"},
 #         {"prompt": "The robot looks at a glowing holographic sign"}
 #     ]
-    
+
 #     result_path = generate_video(title, scenarios)
 #     print(f"반환된 경로: {result_path}")
 
