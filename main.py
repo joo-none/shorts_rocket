@@ -23,21 +23,23 @@ from src.uploader.youtube_upload_for_main import upload_video_to_youtube
 @dataclass
 class NewsArticle:
     """뉴스 기사 데이터 클래스"""
+
     ticker: str
     title: str
     body: str
     url: str
     images: List[dict]
     time_ago: str
-    
+
+
 def crawl_data(tickers: List[dict] = None, limit: int = 3) -> List[NewsArticle]:
     """
     Yahoo Finance 뉴스 크롤링
-    
+
     Args:
         tickers: [{"name": "TSLA", "count": 2}, {"name": "NVDA", "count": 3}]
         limit: tickers가 없을 때 기본 티커당 기사 수
-    
+
     Returns:
         List[NewsArticle]
     """
@@ -47,10 +49,10 @@ def crawl_data(tickers: List[dict] = None, limit: int = 3) -> List[NewsArticle]:
             {"name": "TSLA", "count": limit},
             {"name": "NVDA", "count": limit},
         ]
-    
+
     # 크롤링 실행
     raw_results = yahoo_crawl_all(tickers)
-    
+
     # dict -> NewsArticle 변환
     articles = [
         NewsArticle(
@@ -59,11 +61,11 @@ def crawl_data(tickers: List[dict] = None, limit: int = 3) -> List[NewsArticle]:
             body=r["body"],
             url=r["url"],
             images=r["images"],
-            time_ago=r["time_ago"]
+            time_ago=r["time_ago"],
         )
         for r in raw_results
     ]
-    
+
     return articles
 
 
