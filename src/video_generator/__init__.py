@@ -1,15 +1,7 @@
-from .video_generator import (
-    VideoGenerator,
-    VideoGenerationRequest,
-    GeneratedVideo,
-    VideoModel,
-    VideoGeneratorFactory,
-)
+from .video_generator import VeoGenerator
+from .editor import AutoEditor
 
 __all__ = [
-    "VideoGenerator",
-    "VideoGenerationRequest",
-    "GeneratedVideo",
-    "VideoModel",
-    "VideoGeneratorFactory",
+    "VeoGenerator",
+    "AutoEditor",
 ]

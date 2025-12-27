@@ -9,9 +9,14 @@ import sys
 import json
 import logging
 from typing import List
+import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 # 프로젝트 루트를 Python 경로에 추가
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from dotenv import load_dotenv
+load_dotenv()
 
 from src.crawler import YahooFinanceCrawler, yahoo_crawl_all
 from src.prompt_generator import VideoPromptGenerator, CharacterType
@@ -69,108 +74,116 @@ def crawl_data(tickers: List[dict] = None, limit: int = 3) -> List[NewsArticle]:
     return articles
 
 
+# def generate_video_prompt(crawled_data: List[NewsArticle]) -> tuple:
+#     """크롤링한 기사 바탕으로 주제 선정 및 전체 영상/개별 영상 시나리오 생성"""
+#     # 주제 선정 및 시나리오 생성 구현
+
+#     total_scenario = None  # 전체 영상 시나리오
+#     individual_scenarios_list = []  # 개별 영상 시나리오 리스트
+
+#     return total_scenario, individual_scenarios_list
+
 def generate_video_prompt(crawled_data: List[NewsArticle]) -> tuple:
-    """크롤링한 기사 바탕으로 주제 선정 및 전체 영상/개별 영상 시나리오 생성"""
-    # 주제 선정 및 시나리오 생성 구현
+    """
+    테스트를 위한 임시 시나리오 생성 함수.
+    crawled_data의 내용을 일부 반영하여 VeoGenerator가 인식할 수 있는 포맷으로 반환합니다.
+    """
+    print(f"\n📝 [Prompt Generation] {len(crawled_data)}개의 기사를 바탕으로 시나리오 생성 중...")
 
-    total_scenario = None  # 전체 영상 시나리오
-    individual_scenarios_list = []  # 개별 영상 시나리오 리스트
+    # 1. 전체 영상 컨셉 (현재는 로그용)
+    total_scenario = "최신 금융 뉴스 요약 쇼츠"
 
+    # 2. 개별 영상 클립 시나리오 (VeoGenerator.run_batch에서 사용될 형식)
+    # 기사 데이터를 기반으로 2~3개의 클립만 테스트용으로 생성
+    individual_scenarios_list = []
+    
+    # 예시로 최대 2개의 기사만 사용하여 테스트
+    test_articles = crawled_data[:2] if crawled_data else []
+
+    for i, article in enumerate(test_articles):
+        # 기사 제목이나 내용을 바탕으로 프롬프트 구성
+        # 팁: Veo는 구체적인 시각적 묘사가 있을 때 결과가 더 좋습니다.
+        visual_prompt = f"Cinematic digital art of {article.ticker} stock symbol glowing on a high-tech screen, 4k, professional financial news style."
+        
+        clip_task = {
+            "prompt": visual_prompt,
+            "gen_image_first": True,       # Imagen으로 첫 프레임 생성 후 영상 제작 (안정적임)
+            "image_prompt": visual_prompt, # 이미지 생성에 사용될 프롬프트
+            "aspect_ratio": "9:16"         # 쇼츠용 세로 비율
+        }
+        individual_scenarios_list.append(clip_task)
+
+    # 기사가 없을 경우를 대비한 기본 더미 데이터
+    if not individual_scenarios_list:
+        individual_scenarios_list = [
+            {
+                "prompt": "A futuristic digital world map showing stock market data flow, neon blue and gold, 4k, vertical.",
+                "gen_image_first": True,
+                "aspect_ratio": "9:16"
+            }
+        ]
+
+    print(f"✅ 총 {len(individual_scenarios_list)}개의 클립 시나리오가 준비되었습니다.")
     return total_scenario, individual_scenarios_list
 
 
-def generate_video(total_scenario, individual_scenarios_list) -> str:  # 건희 구현
+def generate_video(total_scenario: str, individual_scenarios_list: List[dict[str, any]]) -> str:
     """
-    각 시나리오별 영상 생성 (영상 이어 붙이기)
-    :param total_scenario: 전체 프로젝트 이름 또는 주제 (폴더명으로 사용)
-    :param individual_scenarios_list: 시나리오 정보가 담긴 딕셔너리 리스트
-           예: [{'prompt': 'A cat walking', 'scene_id': 1}, ...]
-    :return: 최종 생성된 영상의 파일 경로 (str)
+    생성된 시나리오를 바탕으로 VeoGenerator를 통해 숏폼 영상을 생성하고,
+    AutoEditor를 통해 하나로 합칩니다.
+
+    Args:
+        total_scenario: 전체 영상 컨셉 (현재 미사용)
+        individual_scenarios_list: 개별 영상 프롬프트 리스트 [{"prompt": "..."}, ...]
+
+    Returns:
+        str: 최종 생성된 영상 파일 경로
     """
+    print("\n=== [Video Generation Start] ===")
+    
+    # 1. 설정 정의
+    API_KEY = os.getenv("GOOGLE_API_KEYLJE") # 환경변수에서 키 가져오기
+    if not API_KEY:
+        raise ValueError("❌ GEMINI_API_KEY 환경변수가 설정되지 않았습니다.")
+        
+    TEMP_CLIPS_FOLDER = "temp_shorts_clips"
+    FINAL_OUTPUT_PATH = "final_shorts_output.mp4"
 
-    print(f"\n🚀 프로젝트 시작: {total_scenario}")
-    print(f"총 {len(individual_scenarios_list)}개의 씬을 생성하고 병합합니다.")
-
-    # 1. 저장할 폴더명 설정 (공백 제거 등 안전하게 처리)
-    # 예: "My Movie" -> "My_Movie"
-    project_folder = total_scenario.replace(" ", "_")
-    final_output_path = os.path.join(project_folder, "final_movie.mp4")
-
-    # ---------------------------------------------------------
-    # 단계 1: Veo를 이용한 영상 일괄 생성 (Batch)
-    # ---------------------------------------------------------
+    # 2. VeoGenerator 초기화 및 일괄 생성
     try:
-        veo = VeoGenerator()
+        generator = VeoGenerator(api_key=API_KEY, model_name="veo-3.1-generate-preview")
+        
+        # individual_scenarios_list가 VeoGenerator가 요구하는 tasks 형식과 일치한다고 가정
+        # (즉, [{'prompt': '...'}, ... ] 형태)
+        print(f"총 {len(individual_scenarios_list)}개의 클립 생성을 시작합니다.")
+        generator.run_batch(individual_scenarios_list, output_folder=TEMP_CLIPS_FOLDER)
+        
+    except Exception as e:
+        print(f"❌ 영상 생성 중 오류 발생: {e}")
+        # 생성 단계에서 실패하면 더 이상 진행하지 않음
+        raise e
 
-        # VeoGenerator의 generate_batch 형식에 맞게 데이터 변환
-        batch_tasks = []
-        for i, scene in enumerate(individual_scenarios_list):
-            # 시나리오 리스트에서 프롬프트 추출 (키 이름은 실제 데이터에 맞춰 수정 필요)
-            # 예: scene['description'] 혹은 scene['prompt']
-            prompt_text = scene.get("prompt") or scene.get("description", "")
-
-            if not prompt_text:
-                print(f"⚠️ 경고: {i}번 씬의 프롬프트가 비어있어 건너뜁니다.")
-                continue
-
-            task = {
-                "prompt": prompt_text
-                # # 파일명 자동 지정: scene_001.mp4, scene_002.mp4 ...
-                # "output_path": f"scene_{i+1:03d}.mp4",
-                # "aspect_ratio": "16:9" # 필요시 설정
-            }
-            batch_tasks.append(task)
-
-        # 실제 생성 요청 (폴더가 없으면 자동 생성됨)
-        if batch_tasks:
-            print("🎥 영상 생성 프로세스 진입...")
-            veo.generate_batch(task_list=batch_tasks, folder_name=project_folder)
+    # 3. AutoEditor 초기화 및 병합
+    print("\n=== [Video Editing Start] ===")
+    try:
+        editor = AutoEditor(resolution=(1080, 1920)) # 쇼츠용 세로 해상도 (선택사항)
+        
+        # 메서드 체이닝으로 로드 -> 병합 -> 내보내기 수행
+        (editor.load_from_folder(TEMP_CLIPS_FOLDER)
+               .concatenate()
+               # 필요하다면 여기에 BGM, 자막 추가 로직 구현
+               # .add_bgm("background_music.mp3", volume=0.2)
+               .export(FINAL_OUTPUT_PATH))
+               
+        if os.path.exists(FINAL_OUTPUT_PATH):
+            print(f"✅ 최종 영상 생성 완료: {FINAL_OUTPUT_PATH}")
+            return FINAL_OUTPUT_PATH
         else:
-            raise ValueError("생성할 시나리오가 없습니다.")
+            raise FileNotFoundError("최종 영상 파일 생성에 실패했습니다.")
 
     except Exception as e:
-        print(f"❌ 영상 생성 중 치명적 오류: {e}")
-        return None
-
-    # ---------------------------------------------------------
-    # 단계 2: AutoEditor를 이용한 영상 병합
-    # ---------------------------------------------------------
-    try:
-        print("🎞️ 영상 편집 및 병합 프로세스 진입...")
-
-        editor = AutoEditor(output_resolution=(1920, 1080))
-
-        # 생성된 폴더에서 영상 로드
-        editor.load_clips_from_folder(project_folder)
-
-        # 이어 붙이기
-        editor.concatenate()
-
-        # if 'bgm_path' in total_scenario: ...
-
-        # 최종 내보내기
-        editor.export(final_output_path)
-
-        print(f"🎉 모든 작업 완료! 결과물: {final_output_path}")
-        return final_output_path
-
-    except Exception as e:
-        print(f"❌ 영상 편집 중 오류: {e}")
-        return None
-
-
-# # --- 테스트 실행용 ---
-# if __name__ == "__main__":
-#     # 가상의 입력 데이터
-#     title = "Cyberpunk_Story"
-#     scenarios = [
-#         {"prompt": "A futuristic city skyline with neon lights, cinematic shot"},
-#         {"prompt": "A robot walking in the rain, close up"},
-#         {"prompt": "The robot looks at a glowing holographic sign"}
-#     ]
-
-#     result_path = generate_video(title, scenarios)
-#     print(f"반환된 경로: {result_path}")
+        print(f"❌ 영상 편집 중 오류 발생: {e}")
+        raise e
 
 
 from googleapiclient.discovery import build
